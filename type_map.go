@@ -1,3 +1,4 @@
+//go:build !gccgo
 // +build !gccgo
 
 package reflect2
@@ -23,10 +24,10 @@ func discoverTypes() {
 	types = make(map[string]reflect.Type)
 	packages = make(map[string]map[string]reflect.Type)
 
-	loadGoTypes()
+	loadGoTypes(addTyp)
 }
 
-func loadGoTypes() {
+func loadGoTypes(callback func(typ reflect.Type)) {
 	var obj interface{} = reflect.TypeOf(0)
 	sections, offset := typelinks2()
 	for i, offs := range offset {
@@ -34,18 +35,24 @@ func loadGoTypes() {
 		for _, off := range offs {
 			(*emptyInterface)(unsafe.Pointer(&obj)).word = resolveTypeOff(unsafe.Pointer(rodata), off)
 			typ := obj.(reflect.Type)
-			if typ.Kind() == reflect.Ptr && typ.Elem().Kind() == reflect.Struct {
-				loadedType := typ.Elem()
-				pkgTypes := packages[loadedType.PkgPath()]
-				if pkgTypes == nil {
-					pkgTypes = map[string]reflect.Type{}
-					packages[loadedType.PkgPath()] = pkgTypes
-				}
-				types[loadedType.String()] = loadedType
-				pkgTypes[loadedType.Name()] = loadedType
+			for typ.Kind() == reflect.Array || typ.Kind() == reflect.Chan || typ.Kind() == reflect.Map || typ.Kind() == reflect.Ptr || typ.Kind() == reflect.Slice {
+				callback(typ)
+				typ = typ.Elem()
 			}
+			callback(typ)
 		}
 	}
+}
+
+func addTyp(typ reflect.Type) {
+	loadedType := typ
+	pkgTypes := packages[loadedType.PkgPath()]
+	if pkgTypes == nil {
+		pkgTypes = map[string]reflect.Type{}
+		packages[loadedType.PkgPath()] = pkgTypes
+	}
+	types[loadedType.String()] = loadedType
+	pkgTypes[loadedType.Name()] = loadedType
 }
 
 type emptyInterface struct {

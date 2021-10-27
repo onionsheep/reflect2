@@ -3,7 +3,6 @@ package reflect2
 import (
 	"reflect"
 	"runtime"
-	"sync"
 	"unsafe"
 )
 
@@ -129,23 +128,33 @@ type API interface {
 var ConfigUnsafe = Config{UseSafeImplementation: false}.Froze()
 var ConfigSafe = Config{UseSafeImplementation: true}.Froze()
 
+func init() {
+	ConfigUnsafe.cache.preload()
+}
+
+type TypeCache interface {
+	Get(k uintptr) Type
+	AddIfAbsent(k uintptr, v Type)
+}
+
 type frozenConfig struct {
 	useSafeImplementation bool
-	cache                 *sync.Map
+	cache                 *typeCache3
 }
 
 func (cfg Config) Froze() *frozenConfig {
 	return &frozenConfig{
 		useSafeImplementation: cfg.UseSafeImplementation,
-		cache:                 new(sync.Map),
+		// cache:                 new(sync.Map),
+		cache: NewTypeCache3AutoSize(),
 	}
 }
 
 func (cfg *frozenConfig) TypeOf(obj interface{}) Type {
 	cacheKey := uintptr(unpackEFace(obj).rtype)
-	typeObj, found := cfg.cache.Load(cacheKey)
-	if found {
-		return typeObj.(Type)
+	typeObj := cfg.cache.Get(cacheKey)
+	if typeObj != nil {
+		return typeObj
 	}
 	return cfg.Type2(reflect.TypeOf(obj))
 }
@@ -155,13 +164,13 @@ func (cfg *frozenConfig) Type2(type1 reflect.Type) Type {
 		return nil
 	}
 	cacheKey := uintptr(unpackEFace(type1).data)
-	typeObj, found := cfg.cache.Load(cacheKey)
-	if found {
-		return typeObj.(Type)
+	typeObj := cfg.cache.Get(cacheKey)
+	if typeObj != nil {
+		return typeObj
 	}
 	type2 := cfg.wrapType(type1)
-	cfg.cache.Store(cacheKey, type2)
-	return type2
+	cfg.cache.AddIfAbsent(cacheKey, type2)
+	return cfg.cache.Get(cacheKey)
 }
 
 func (cfg *frozenConfig) wrapType(type1 reflect.Type) Type {
