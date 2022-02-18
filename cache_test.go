@@ -1,11 +1,17 @@
 package reflect2
 
 import (
+	"log"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
 )
+
+func Probe() {
+	_offset, _size := probeTypeCacheOptions(0)
+	log.Printf("types.len=%v, probe.offset=%v, probe.size=%v", len(types), _offset, _size)
+}
 
 func TestEffective(t *testing.T) {
 	// CacheTestStructTypeCaller()

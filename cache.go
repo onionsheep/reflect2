@@ -1,7 +1,6 @@
 package reflect2
 
 import (
-	"log"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -155,9 +154,9 @@ func probeTypeCacheOptions(memMax uintptr) (uintptr, uintptr) {
 		}
 	}
 	sort.Sort(&probeData)
-	for _, d := range probeData {
-		log.Printf("A=%7d, M=%7d, S=%7d, O=%2d", d.Access, d.Memory, d.Size, d.Offset)
-	}
+	// for _, d := range probeData {
+	// 	log.Printf("A=%7d, M=%7d, S=%7d, O=%2d", d.Access, d.Memory, d.Size, d.Offset)
+	// }
 
 	return probeData[0].Offset, probeData[0].Size
 }
@@ -222,11 +221,6 @@ func getAllTypeKeys() []uintptr {
 		keys = append(keys, cacheKey)
 	}
 	return keys
-}
-
-func Probe() {
-	_offset, _size := probeTypeCacheOptions(0)
-	log.Printf("types.len=%v, probe.offset=%v, probe.size=%v", len(types), _offset, _size)
 }
 
 type typeCache2 struct {
